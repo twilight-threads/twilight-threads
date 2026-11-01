@@ -169,6 +169,18 @@
   .check{display:flex;gap:10px;align-items:center;font-size:15px;margin:12px 0}
   .check input{width:20px;height:20px}
   .note{font-size:13px;color:var(--muted);margin:4px 0}
+  .chanbar{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;text-align:left;background:#fff;
+    border:1.5px solid var(--line);border-radius:var(--r-md);padding:10px 12px;margin:0 0 8px;font-size:15px}
+  .chanbar span:last-child{color:var(--indigo-2);font-weight:700;white-space:nowrap}
+  .chanbar.alt{background:var(--tag);border-color:#D9B65C}
+  .pcard{background:#fff;border:1px solid var(--line);border-radius:var(--r-md);padding:14px;margin-bottom:10px}
+  .pcard h3{margin:0 0 2px;font-size:17px}
+  .kv{display:flex;justify-content:space-between;padding:3px 0;font-size:14px}
+  .kv.big{font-size:17px;font-weight:800;border-top:1px solid var(--line);margin-top:6px;padding-top:8px}
+  .pcard details{margin-top:8px;font-size:14px}
+  .pcard summary{cursor:pointer;font-weight:600;color:var(--indigo-2);padding:4px 0}
+  .pcard .btnrow{display:flex;gap:12px;margin-top:6px}
+  .stocklist div{display:flex;justify-content:space-between;padding:3px 0;border-top:1px dashed var(--line)}
   #labelSheet{display:none}
   @media print{
     body[data-print="receipt"] *{visibility:hidden}
@@ -215,6 +227,7 @@
   </header>
 
   <main id="vSell">
+    <button class="chanbar" id="chanBar"><span id="chanText"></span><span>Change</span></button>
     <div class="banner hidden" id="exBanner"></div>
     <div class="searchbar">
       <input id="q" type="search" placeholder="Search name, SKU or barcode" autocomplete="off" enterkeyhint="search">
@@ -232,6 +245,9 @@
       <button id="mExpense"><span><b>Add expense</b><small>Rent, salaries, transport, bills</small></span><span class="chev">›</span></button>
       <button id="mStockIn" class="owner-only"><span><b>Stock in</b><small>Record a supplier delivery</small></span><span class="chev">›</span></button>
       <button id="mNewProd" class="owner-only"><span><b>New product</b><small>Add a design with its sizes and colours</small></span><span class="chev">›</span></button>
+      <button id="mTransfer" class="owner-only"><span><b>Transfer stock</b><small>Move pieces between main stock and a partner shop</small></span><span class="chev">›</span></button>
+      <button id="mPartners" class="owner-only"><span><b>Partner shops</b><small>Their stock, sales this month, rent and commission terms</small></span><span class="chev">›</span></button>
+      <button id="mSettle" class="owner-only"><span><b>Partner settlement</b><small>Month-end: commission, rent and money received</small></span><span class="chev">›</span></button>
       <button id="mLabels"><span><b>Print barcode labels</b><small>Tags for items, ready to scan</small></span><span class="chev">›</span></button>
     </div>
   </main>
@@ -246,6 +262,7 @@
   <div class="sheet-head"><button class="icon-btn" id="billBack">Back</button><h2>Bill</h2>
     <button class="link danger" id="clearBill">Clear</button></div>
   <div class="wrap">
+    <div class="note" id="billChan"></div>
     <div id="lines"></div>
     <div class="field">
       <label>Payment</label>
@@ -354,6 +371,67 @@
   <div class="billbar"><button id="npSave"><span>Create and add stock</span><span></span></button></div>
 </section>
 
+<!-- Channel -->
+<section id="vChannel" class="sheet hidden" aria-label="Sales channel">
+  <div class="sheet-head"><button class="icon-btn" id="chBack">Done</button><h2>Where is this sale from?</h2></div>
+  <div class="wrap">
+    <div class="seg" id="chSeg" style="grid-template-columns:1fr 1fr"></div>
+    <p class="note" id="chNote"></p>
+    <div id="chPartner" class="hidden">
+      <div class="field"><label for="chLoc">Partner shop</label><select id="chLoc"></select></div>
+      <div class="field"><label for="chDate">Date of sale (as reported by the partner)</label><input id="chDate" type="date"></div>
+      <p class="note">These sales come out of that shop’s own stock. Keep the date as the partner reported it; every bill you enter stays on that date.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Transfer -->
+<section id="vTransfer" class="sheet hidden" aria-label="Transfer stock">
+  <div class="sheet-head"><button class="icon-btn" id="trBack">Back</button><h2>Transfer stock</h2></div>
+  <div class="wrap">
+    <div class="grid2">
+      <div class="field"><label for="trFrom">From</label><select id="trFrom"></select></div>
+      <div class="field"><label for="trTo">To</label><select id="trTo"></select></div>
+    </div>
+    <div class="field"><label for="trQ">Add items</label>
+      <div class="inrow"><input id="trQ" type="search" autocomplete="off" placeholder="Search or scan"><button id="trScan">Scan</button></div></div>
+    <div class="results" id="trResults"></div>
+    <div id="trLines"></div>
+  </div>
+  <div class="billbar"><button id="trSave"><span id="trSaveLabel">Transfer</span><span class="num" id="trSaveAmt"></span></button></div>
+</section>
+
+<!-- Partner shops -->
+<section id="vPartners" class="sheet hidden" aria-label="Partner shops">
+  <div class="sheet-head"><button class="icon-btn" id="paBack">Back</button><h2>Partner shops</h2></div>
+  <div class="wrap">
+    <div id="paList"></div>
+    <h3 style="margin:22px 0 4px;font-size:16px">Add a partner shop</h3>
+    <div class="field"><label for="paName">Shop name</label><input id="paName" type="text" autocomplete="off"></div>
+    <div class="grid2">
+      <div class="field"><label for="paPct">Their share of sales (%)</label><input id="paPct" type="number" inputmode="decimal" min="0" max="100" value="5"></div>
+      <div class="field"><label for="paRent">Monthly rent (₹)</label><input id="paRent" type="number" inputmode="decimal" min="0"></div>
+    </div>
+    <button class="actions" style="display:block;width:100%;border:0;border-radius:10px;background:var(--indigo);color:#fff;padding:14px;font-weight:700" id="paAdd">Add partner shop</button>
+  </div>
+</section>
+
+<!-- Partner settlement -->
+<section id="vSettle" class="sheet hidden" aria-label="Partner settlement">
+  <div class="sheet-head"><button class="icon-btn" id="seBack">Back</button><h2>Partner settlement</h2></div>
+  <div class="wrap">
+    <div class="field"><label for="seLoc">Partner shop</label><select id="seLoc"></select></div>
+    <div class="grid2">
+      <div class="field"><label for="seMonth">Month</label><select id="seMonth"></select></div>
+      <div class="field"><label for="seYear">Year</label><select id="seYear"></select></div>
+    </div>
+    <div id="sePreview"></div>
+    <h3 style="margin:22px 0 8px;font-size:16px" id="seListHead">Settlements</h3>
+    <div id="seList"></div>
+  </div>
+  <div class="billbar hidden" id="seBar"><button id="seSave"><span id="seSaveLabel">Save settlement</span><span></span></button></div>
+</section>
+
 <!-- Labels -->
 <section id="vLabels" class="sheet hidden" aria-label="Barcode labels">
   <div class="sheet-head"><button class="icon-btn" id="lbBack">Back</button><h2>Barcode labels</h2><button class="link danger" id="lbClear">Clear</button></div>
@@ -419,7 +497,9 @@ const store = {
 };
 
 const S = { token: store.get('pos.token'), user: null, shop: null, items: [], bySku: {},
-            cart: [], cat: 'All', open: {}, payMode: 'UPI', lastReceipt: null };
+            cart: [], cat: 'All', open: {}, payMode: 'UPI', lastReceipt: null, channel: 'Shop', loc: 'MAIN', saleDate: '' };
+const stockAt = (i, loc) => (i.stk && i.stk[loc]) || 0;
+const stockOf = i => stockAt(i, S.loc);
 
 async function call(fn, ...args){
   const url = window.POS_CONFIG.API_URL;
@@ -545,7 +625,7 @@ function renderList(){
   $('plist').innerHTML = ids.map(pid => {
     const vs = groups[pid], p = vs[0];
     const open = q || S.open[pid] || ids.length === 1;
-    const total = vs.reduce((s, v) => s + v.stock, 0);
+    const total = vs.reduce((s, v) => s + stockOf(v), 0);
     const prices = [...new Set(vs.map(v => v.price))];
     const colours = {};
     vs.forEach(v => (colours[v.colour] = colours[v.colour] || []).push(v));
@@ -556,7 +636,7 @@ function renderList(){
       </button>
       ${open ? `<div class="vars">${Object.entries(colours).map(([c, list]) => `
         <div class="colour"><span class="cname">${esc(c)}</span><span class="tags">${list.map(v => {
-          const left = v.stock - inCartQty(v.sku), inCart = inCartQty(v.sku);
+          const left = stockOf(v) - inCartQty(v.sku), inCart = inCartQty(v.sku);
           return `<button class="tag ${inCart ? 'in-cart' : ''} ${left <= 2 && left > 0 ? 'low' : ''}" data-sku="${esc(v.sku)}" ${left <= 0 && !S.shop.allowNegativeStock ? 'disabled' : ''}
              aria-label="${esc(p.name)} ${esc(c)} size ${esc(v.size)}, ${left} left">
              <b>${esc(v.size)}</b><small>${inCart ? inCart + ' in bill' : left <= 0 ? 'sold out' : left + ' left'}</small></button>`;
@@ -575,7 +655,7 @@ function addToCart(sku, silent){
   const it = S.bySku[sku]; if (!it) return false;
   const line = S.cart.find(c => c.sku === sku);
   const want = (line ? line.qty : 0) + 1;
-  if (!S.shop.allowNegativeStock && want > it.stock) { toast(`Only ${it.stock} of ${it.name} ${it.colour} ${it.size} in stock`, true); return false; }
+  if (!S.shop.allowNegativeStock && want > stockOf(it)) { toast(`Only ${stockOf(it)} of ${it.name} ${it.colour} ${it.size} in stock`, true); return false; }
   if (line) line.qty++; else S.cart.push({ sku, qty: 1, lineDiscount: 0 });
   if (!silent) toast(`Added ${it.name} · ${it.colour} ${it.size}`);
   if (navigator.vibrate) navigator.vibrate(30);
@@ -610,8 +690,18 @@ function renderBill(){
         <button class="link danger" data-rm="${i}">Remove</button>
       </div></div>`;
   }).join('') || '<div class="empty">The bill is empty. Go back and tap a size to add it.</div>';
-  $('payModes').innerHTML = ['UPI', 'Cash', 'Card', 'Credit'].map(m =>
-    `<button aria-pressed="${m === S.payMode}" data-mode="${m}">${m}</button>`).join('');
+  const lo = S.meta && S.meta.locations.find(l => l.id === S.loc);
+  $('billChan').innerHTML = S.channel === 'Partner'
+    ? `Partner shop <b>${esc(lo ? lo.name : '')}</b> · sale date <b>${esc(fmtDay(S.saleDate))}</b>`
+    : `Channel: <b>${esc(S.channel)}</b>`;
+  if (S.channel === 'Partner') {
+    S.payMode = 'Partner';
+    $('payModes').innerHTML = '<div class="note" style="grid-column:1/-1">Partner shop sale. The money comes to you through the monthly partner settlement, not at this counter.</div>';
+  } else {
+    if (S.payMode === 'Partner') S.payMode = 'UPI';
+    $('payModes').innerHTML = ['UPI', 'Cash', 'Card', 'Credit'].map(m =>
+      `<button aria-pressed="${m === S.payMode}" data-mode="${m}">${m}</button>`).join('');
+  }
   renderTotals();
 }
 function renderTotals(){
@@ -651,7 +741,8 @@ $('completeBtn').onclick = async () => {
   show('busy', true);
   try {
     const r = await call('submitSale', S.token, {
-      clientId: S.clientId, items: S.cart, billDiscount: t.bd, paymentMode: S.payMode,
+      clientId: S.clientId, items: S.cart, billDiscount: t.bd, paymentMode: S.channel === 'Partner' ? 'Partner' : S.payMode,
+      channel: S.channel, locationId: S.channel === 'Partner' ? S.loc : 'MAIN', saleDate: S.channel === 'Partner' ? S.saleDate : '',
       customerName: $('custName').value.trim(), customerPhone: $('custPhone').value.trim(),
       exchangeRef: S.exchange ? S.exchange.ref : '',
     });
@@ -676,6 +767,7 @@ function showReceipt(r, fresh){
     <h3>${esc(r.shop.name)}</h3>
     <div class="c">${esc(r.shop.addressLine)}<br>${esc(r.shop.phone)}</div><hr>
     <div class="row sub"><span>${esc(r.saleId)}</span><span>${esc(r.dateTime)}</span></div>
+    ${r.channel && r.channel !== 'Shop' ? `<div class="sub">${r.channel === 'Partner' ? 'Partner shop: ' + esc(r.locationName) : 'Via ' + esc(r.channel)}</div>` : ''}
     ${r.customerName ? `<div class="sub">Customer: ${esc(r.customerName)}</div>` : ''}<hr>
     ${r.items.map(i => r.total < 0
       ? `<div class="row"><span>${esc(i.name)}</span><span>${fmt(Math.abs(i.lineTotal))}</span></div>
@@ -729,10 +821,11 @@ async function loadToday(){
     const d = await call('getTodaySummary', S.token);
     $('vToday').innerHTML = `
       <div class="daytotal num"><div class="sub">${esc(d.scope)} · today</div>
-        <div class="amt">${fmt(d.total)}</div><div class="sub">${d.count} bill${d.count === 1 ? '' : 's'}</div>
-        <div class="modes">${Object.entries(d.byMode).map(([m, v]) => `<span>${esc(m)} ${fmt(v)}</span>`).join('')}</div></div>
+        <div class="amt">${fmt(d.total)}</div><div class="sub">${d.count} bill${d.count === 1 ? '' : 's'} · shop and online sales${(d.byChannel || {}).Partner !== undefined ? '. Partner shop entries are settled monthly and are not in this total.' : ''}</div>
+        <div class="modes">${Object.entries(d.byMode).map(([m, v]) => `<span>${esc(m)} ${fmt(v)}</span>`).join('')}</div>
+        <div class="modes">${Object.entries(d.byChannel || {}).map(([m, v]) => `<span>${esc(m)} ${fmt(v)}</span>`).join('')}</div></div>
       ${d.bills.map(b => `<button class="bill num" data-sale="${esc(b.saleId)}">
-        <span><b>${esc(b.time)}</b> · ${esc(b.paymentMode)}<br><span class="pmeta">${esc(b.saleId)}${b.customerName ? ' · ' + esc(b.customerName) : ''}</span></span>
+        <span><b>${esc(b.time)}</b> · ${esc(b.channel === 'Partner' ? 'Partner' : b.channel !== 'Shop' ? b.channel + ' · ' + b.paymentMode : b.paymentMode)}${b.forDate ? ' · sale of ' + esc(b.forDate) : ''}<br><span class="pmeta">${esc(b.saleId)}${b.customerName ? ' · ' + esc(b.customerName) : ''}</span></span>
         <b class="${b.total < 0 ? 'neg' : ''}">${fmt(b.total)}</b></button>`).join('') ||
         '<div class="empty">No bills yet today. Switch to Sell to make the first one.</div>'}`;
   } catch(e){ $('vToday').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
@@ -813,10 +906,12 @@ document.addEventListener('keydown', e => {
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
 const todayISO = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 const isOpen = id => !$(id).classList.contains('hidden');
-const SHEETS = ['vBill', 'vReceipt', 'vReturn', 'vExpense', 'vStockIn', 'vNewProd', 'vLabels', 'vScan'];
+const SHEETS = ['vBill', 'vReceipt', 'vReturn', 'vExpense', 'vStockIn', 'vNewProd', 'vLabels', 'vScan', 'vChannel', 'vTransfer', 'vPartners', 'vSettle'];
 
 async function loadMeta(){
   S.meta = await call('getMeta', S.token);
+  S.channel = 'Shop'; S.loc = 'MAIN'; S.saleDate = todayISO();
+  renderChanBar();
   document.querySelectorAll('.owner-only').forEach(el => el.classList.toggle('hidden', S.user.role !== 'Owner'));
 }
 
@@ -839,6 +934,7 @@ window.addEventListener('afterprint', () => { delete document.body.dataset.print
 function currentScanTarget(){
   if (isOpen('vScan')) return null;
   if (isOpen('vStockIn')) return 'stockin';
+  if (isOpen('vTransfer')) return 'transfer';
   if (isOpen('vLabels')) return 'labels';
   if (isOpen('vBill')) return 'sell';
   if (SHEETS.some(isOpen)) return null;
@@ -846,6 +942,7 @@ function currentScanTarget(){
 }
 function onScanHit(hit, target){
   if (target === 'stockin') return siAdd(hit.sku);
+  if (target === 'transfer') return trAdd(hit.sku);
   if (target === 'labels') return lbAdd(hit.sku);
   const ok = addToCart(hit.sku);
   if (ok && isOpen('vBill')) renderBill();
@@ -858,10 +955,11 @@ function itemMatches(q){
   return S.items.filter(i => i.name.toLowerCase().includes(q) || i.sku.toLowerCase().includes(q) ||
     i.barcode.includes(q) || (i.name + ' ' + i.colour + ' ' + i.size).toLowerCase().includes(q)).slice(0, 12);
 }
-function bindPicker(inputId, resultsId, onPick){
+function bindPicker(inputId, resultsId, onPick, locFn){
+  const where = () => (locFn ? locFn() : S.loc);
   const render = () => {
     const list = itemMatches($(inputId).value);
-    $(resultsId).innerHTML = list.map(i => `<button data-sku="${esc(i.sku)}"><span>${esc(i.name)}<br><span class="pmeta">${esc(i.colour)} · ${esc(i.size)}</span></span><span class="pmeta num">${i.stock} in stock</span></button>`).join('');
+    $(resultsId).innerHTML = list.map(i => `<button data-sku="${esc(i.sku)}"><span>${esc(i.name)}<br><span class="pmeta">${esc(i.colour)} · ${esc(i.size)}</span></span><span class="pmeta num">${stockAt(i, where())} in stock</span></button>`).join('');
   };
   $(inputId).addEventListener('input', render);
   $(inputId).addEventListener('keydown', e => {
@@ -938,6 +1036,7 @@ async function loadReturnBill(saleId){
   $('retHead').textContent = 'Loading bill…'; $('retLines').innerHTML = ''; $('retTotals').innerHTML = '';
   try {
     R.sale = await call('getSaleForReturn', S.token, saleId);
+    if (R.sale.channel === 'Partner') R.mode = 'Partner'; else if (R.mode === 'Partner') R.mode = 'Cash';
     R.qty = {}; R.clientId = uid();
     renderReturn();
   } catch(e){ $('retHead').innerHTML = `<span style="color:var(--bad)">${esc(e.message)}</span>`; }
@@ -959,11 +1058,12 @@ function renderReturn(){
         <div class="stepper"><button data-rdec="${esc(l.sku)}" aria-label="One less">−</button><span class="num">${q}</span><button data-rinc="${esc(l.sku)}" aria-label="One more">+</button></div>
         <span class="pmeta">of ${l.returnableQty} returnable</span>` : '<span class="pmeta">Nothing left to return</span>'}</div></div>`;
   }).join('');
-  seg('retModes', ['Cash', 'UPI', 'Card', 'Exchange'], R.mode, v => { R.mode = v; renderReturn(); });
+  seg('retModes', s.channel === 'Partner' ? ['Partner'] : ['Cash', 'UPI', 'Card', 'Exchange'], R.mode, v => { R.mode = v; renderReturn(); });
   const t = returnTotal();
   $('retTotals').innerHTML = `<div class="grand"><span>${R.mode === 'Exchange' ? 'Exchange credit' : 'Refund'}</span><span>${fmt(t)}</span></div>` +
-    (R.mode === 'Exchange' ? '<div class="note">The credit is applied to the next bill you make now.</div>' : '');
-  $('retSubmitLabel').textContent = R.mode === 'Exchange' ? 'Give exchange credit' : 'Refund by ' + R.mode;
+    (R.mode === 'Exchange' ? '<div class="note">The credit is applied to the next bill you make now.</div>' : '') +
+    (R.mode === 'Partner' ? '<div class="note">The partner shop dealt with the customer. This lowers that shop’s sales for the settlement and puts the pieces back in its stock.</div>' : '');
+  $('retSubmitLabel').textContent = R.mode === 'Exchange' ? 'Give exchange credit' : R.mode === 'Partner' ? 'Record return' : 'Refund by ' + R.mode;
   $('retSubmitAmt').textContent = fmt(t);
   $('retSubmit').disabled = !(t > 0) || s.tooOld;
   show('retBar', true);
@@ -1055,9 +1155,9 @@ function siAdd(sku){
 }
 function renderStockIn(){
   $('siLines').innerHTML = SI.lines.map((l, i) => {
-    const it = S.bySku[l.sku] || { name: l.sku, colour: '', size: '', stock: 0 };
+    const it = S.bySku[l.sku] || { name: l.sku, colour: '', size: '', stk: {} };
     return `<div class="line">
-      <div><div class="pname">${esc(it.name)}</div><div class="pmeta">${esc(it.colour)} · ${esc(it.size)} · now ${it.stock} in stock</div></div>
+      <div><div class="pname">${esc(it.name)}</div><div class="pmeta">${esc(it.colour)} · ${esc(it.size)} · now ${stockAt(it, 'MAIN')} in main stock</div></div>
       <div class="lt num">${fmt((Number(l.qty) || 0) * (Number(l.cost) || 0))}</div>
       <div class="line-actions">
         <label class="pmeta">Qty <input class="mini" type="number" inputmode="numeric" min="0" data-siq="${i}" value="${esc(l.qty)}"></label>
@@ -1085,7 +1185,7 @@ $('siLines').addEventListener('click', e => {
   const b = e.target.closest('[data-sirm]'); if (!b) return;
   SI.lines.splice(Number(b.dataset.sirm), 1); renderStockIn();
 });
-bindPicker('siQ', 'siResults', siAdd);
+bindPicker('siQ', 'siResults', siAdd, () => 'MAIN');
 $('siScan').onclick = () => openScanner('stockin');
 $('siBack').onclick = () => {
   if (SI.lines.length && !confirm('Leave without saving? The items you added stay here until you sign out.')) return;
@@ -1218,6 +1318,252 @@ $('lbPrint').onclick = async () => {
   $('labelSheet').innerHTML = ''; $('labelSheet').appendChild(wrap);
   $('pageStyle').textContent = roll ? '@page { size: 50mm 25mm; margin: 0; }' : '@page { size: A4; margin: 13mm 7mm; }';
   if (made) printAs('labels');
+};
+
+/* ---------------- Sales channel ---------------- */
+const fmtDay = iso => {
+  const d = new Date(iso + 'T12:00:00');
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: d.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
+};
+const partners = () => (S.meta ? S.meta.locations.filter(l => l.type === 'Partner') : []);
+function renderChanBar(){
+  const lo = S.meta && S.meta.locations.find(l => l.id === S.loc);
+  $('chanText').innerHTML = S.channel === 'Partner'
+    ? `Partner shop <b>${esc(lo ? lo.name : '')}</b> · <b>${esc(fmtDay(S.saleDate))}</b>`
+    : `Selling via <b>${esc(S.channel)}</b>`;
+  $('chanBar').classList.toggle('alt', S.channel !== 'Shop');
+}
+function applyChannel(ch, locId){
+  const newLoc = ch === 'Partner' ? locId : 'MAIN';
+  if (ch === 'Partner' && !newLoc) return false;
+  if (S.exchange && ch === 'Partner') { toast('Finish the exchange first, or remove the exchange credit.', true); return false; }
+  if (S.cart.length && newLoc !== S.loc) {
+    if (!confirm('Switching stock location clears the current bill. Continue?')) return false;
+    S.cart = []; S.clientId = null;
+  }
+  S.channel = ch; S.loc = newLoc;
+  if (ch === 'Partner') store.set('pos.partner', newLoc);
+  renderChanBar(); renderBillBar(); renderList();
+  return true;
+}
+function renderChannelSheet(){
+  const ps = partners();
+  seg('chSeg', S.meta.channels, S.channel, v => {
+    if (v === 'Partner') {
+      if (!ps.length) return toast('No partner shops yet. The owner can add one under More → Partner shops.', true);
+      const last = store.get('pos.partner');
+      applyChannel('Partner', (ps.find(p => p.id === last) || ps[0]).id);
+    } else applyChannel(v);
+    renderChannelSheet();
+  });
+  $('chNote').textContent = S.channel === 'Partner' ? '' :
+    S.channel === 'Shop' ? 'Walk-in sales at your own shop. Stock comes from Main stock.' :
+    S.channel + ' orders are sold from Main stock, the same stock as the shop.';
+  show('chPartner', S.channel === 'Partner');
+  if (S.channel === 'Partner') {
+    $('chLoc').innerHTML = ps.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
+    $('chLoc').value = S.loc;
+    $('chDate').value = S.saleDate; $('chDate').max = todayISO();
+  }
+}
+$('chanBar').onclick = () => { renderChannelSheet(); show('vChannel', true); };
+$('chBack').onclick = () => show('vChannel', false);
+$('chLoc').onchange = () => { if (!applyChannel('Partner', $('chLoc').value)) $('chLoc').value = S.loc; };
+$('chDate').onchange = () => { if ($('chDate').value) { S.saleDate = $('chDate').value; renderChanBar(); } };
+
+/* ---------------- Transfer stock ---------------- */
+const TR = { lines: [], clientId: null };
+$('mTransfer').onclick = () => {
+  TR.lines = []; TR.clientId = uid();
+  const opts = S.meta.locations.map(l => `<option value="${esc(l.id)}">${esc(l.name)}</option>`).join('');
+  $('trFrom').innerHTML = opts; $('trTo').innerHTML = opts;
+  $('trFrom').value = 'MAIN'; $('trTo').value = (partners()[0] || { id: 'MAIN' }).id;
+  renderTransfer(); show('vTransfer', true);
+};
+function trAdd(sku){
+  const it = S.bySku[sku]; if (!it) return false;
+  const have = stockAt(it, $('trFrom').value);
+  const l = TR.lines.find(x => x.sku === sku);
+  const want = (l ? Number(l.qty) || 0 : 0) + 1;
+  if (want > have) { toast(`Only ${have} of ${it.name} ${it.colour} ${it.size} at the source`, true); return false; }
+  if (l) l.qty = want; else TR.lines.push({ sku, qty: 1 });
+  toast(`Added ${it.name} · ${it.colour} ${it.size}`);
+  renderTransfer();
+  return true;
+}
+function renderTransfer(){
+  const from = $('trFrom').value;
+  $('trLines').innerHTML = TR.lines.map((l, i) => {
+    const it = S.bySku[l.sku] || { name: l.sku, colour: '', size: '', stk: {} };
+    return `<div class="line">
+      <div><div class="pname">${esc(it.name)}</div><div class="pmeta">${esc(it.colour)} · ${esc(it.size)} · ${stockAt(it, from)} available here</div></div><div></div>
+      <div class="line-actions"><label class="pmeta">Qty <input class="mini" type="number" inputmode="numeric" min="1" data-trq="${i}" value="${esc(l.qty)}"></label>
+        <button class="link danger" data-trrm="${i}">Remove</button></div></div>`;
+  }).join('') || (partners().length ? '<div class="empty">Search or scan the pieces you are moving.</div>'
+                                    : '<div class="empty">No partner shops yet. Add one under More → Partner shops first.</div>');
+  trTotals();
+}
+function trTotals(){
+  const pcs = TR.lines.reduce((s, l) => s + (Number(l.qty) || 0), 0);
+  const same = $('trFrom').value === $('trTo').value;
+  $('trSaveLabel').textContent = same ? 'Choose two different places' : pcs ? `Move ${pcs} piece${pcs > 1 ? 's' : ''}` : 'Transfer';
+  $('trSave').disabled = !pcs || same;
+}
+$('trFrom').onchange = $('trTo').onchange = () => { renderTransfer(); $('trResults').innerHTML = ''; };
+$('trLines').addEventListener('input', e => { if (e.target.dataset.trq !== undefined) { TR.lines[e.target.dataset.trq].qty = e.target.value; trTotals(); } });
+$('trLines').addEventListener('change', () => renderTransfer());
+$('trLines').addEventListener('click', e => { const b = e.target.closest('[data-trrm]'); if (b) { TR.lines.splice(Number(b.dataset.trrm), 1); renderTransfer(); } });
+bindPicker('trQ', 'trResults', trAdd, () => $('trFrom').value);
+$('trScan').onclick = () => openScanner('transfer');
+$('trBack').onclick = () => { if (TR.lines.length && !confirm('Leave without saving this transfer?')) return; show('vTransfer', false); };
+$('trSave').onclick = async () => {
+  const items = TR.lines.filter(l => Number(l.qty) > 0).map(l => ({ sku: l.sku, qty: Math.floor(Number(l.qty)) }));
+  show('busy', true);
+  try {
+    const r = await call('submitTransfer', S.token, { clientId: TR.clientId, from: $('trFrom').value, to: $('trTo').value, items });
+    TR.lines = []; TR.clientId = uid();
+    await loadCatalog();
+    show('vTransfer', false);
+    toast(`Moved ${r.pieces} pieces to ${r.to} (${r.transferId})`);
+  } catch(e){ toast(e.message, true); }
+  show('busy', false);
+};
+
+/* ---------------- Partner shops ---------------- */
+$('mPartners').onclick = () => { show('vPartners', true); loadPartners(); };
+$('paBack').onclick = () => show('vPartners', false);
+async function loadPartners(){
+  $('paList').innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const list = await call('getPartnerOverview', S.token);
+    $('paList').innerHTML = list.map(p => `<div class="pcard num">
+      <h3>${esc(p.name)}${p.active ? '' : ' (inactive)'}</h3>
+      <div class="pmeta">Keeps ${esc(String(Math.round(p.commissionPct * 10000) / 100))}% of sales · rent ${fmt(p.monthlyRent)} a month</div>
+      <div class="kv"><span>Pieces in their shop</span><b>${p.units}</b></div>
+      <div class="kv"><span>Stock value at cost</span><b>${fmt(p.valueCost)}</b></div>
+      <div class="kv"><span>Stock value at selling price</span><b>${fmt(p.valueMrp)}</b></div>
+      <div class="kv"><span>Sales this month (net of returns)</span><b>${fmt(p.monthSales)}</b></div>
+      ${p.items.length ? `<details><summary>See what is in their shop</summary><div class="stocklist">${p.items.map(i =>
+        `<div><span>${esc(i.name)} · ${esc(i.colour)} ${esc(i.size)}</span><b>${i.qty}</b></div>`).join('')}</div></details>` : ''}
+      <div class="btnrow"><button class="link" data-pedit="${esc(p.id)}">Edit terms</button>
+        ${p.active && !p.units ? `<button class="link danger" data-poff="${esc(p.id)}">Deactivate</button>` : ''}</div></div>`).join('')
+      || '<div class="empty">No partner shops yet. Add the first one below.</div>';
+    S.partnerList = list;
+  } catch(e){ $('paList').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+$('paList').onclick = async e => {
+  const ed = e.target.closest('[data-pedit]'), off = e.target.closest('[data-poff]');
+  try {
+    if (ed) {
+      const p = S.partnerList.find(x => x.id === ed.dataset.pedit);
+      const pct = prompt('Their share of sales (%)', Math.round(p.commissionPct * 10000) / 100); if (pct === null) return;
+      const rent = prompt('Monthly rent (₹)', p.monthlyRent); if (rent === null) return;
+      await call('updateLocation', S.token, { id: p.id, commissionPct: Number(pct), monthlyRent: Number(rent) });
+      toast('Terms updated. They apply to settlements you save from now on.');
+    } else if (off) {
+      if (!confirm('Deactivate this partner shop? It disappears from the channel list.')) return;
+      await call('updateLocation', S.token, { id: off.dataset.poff, active: false });
+    } else return;
+    await loadMeta(); loadPartners();
+  } catch(err){ toast(err.message, true); }
+};
+$('paAdd').onclick = async () => {
+  show('busy', true);
+  try {
+    await call('createLocation', S.token, { name: $('paName').value.trim(), commissionPct: Number($('paPct').value), monthlyRent: Number($('paRent').value) || 0 });
+    $('paName').value = ''; $('paRent').value = '';
+    await loadMeta(); await loadPartners();
+    toast('Partner shop added. Use Transfer stock to send it pieces.');
+  } catch(e){ toast(e.message, true); }
+  show('busy', false);
+};
+
+/* ---------------- Partner settlement ---------------- */
+const SE = { preview: null, rentMode: 'UPI' };
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+$('mSettle').onclick = () => {
+  const ps = partners();
+  $('seLoc').innerHTML = ps.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
+  const now = new Date(), prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  $('seMonth').innerHTML = MONTHS.map((m, i) => `<option value="${i + 1}">${m}</option>`).join('');
+  $('seYear').innerHTML = [now.getFullYear(), now.getFullYear() - 1, now.getFullYear() - 2].map(y => `<option>${y}</option>`).join('');
+  $('seMonth').value = prev.getMonth() + 1; $('seYear').value = prev.getFullYear();
+  show('vSettle', true);
+  if (!ps.length) { $('sePreview').innerHTML = '<div class="empty">No partner shops yet.</div>'; show('seBar', false); }
+  else loadSettlePreview();
+  loadSettleList();
+};
+$('seBack').onclick = () => show('vSettle', false);
+const seYm = () => $('seYear').value + '-' + String($('seMonth').value).padStart(2, '0');
+['seLoc', 'seMonth', 'seYear'].forEach(id => $(id).onchange = () => loadSettlePreview());
+function renderRentModes(){
+  seg('seRentMode', ['UPI', 'Cash', 'Card', 'Partner'], SE.rentMode, v => { SE.rentMode = v; renderRentModes(); });
+}
+async function loadSettlePreview(){
+  $('sePreview').innerHTML = '<div class="empty">Working it out…</div>'; show('seBar', false);
+  try {
+    const p = SE.preview = await call('partnerPreview', S.token, $('seLoc').value, seYm());
+    const pct = Math.round(p.commissionPct * 10000) / 100;
+    const head = `<div class="totals num">
+      <div><span>Sales (net of returns) · ${p.bills} bill${p.bills === 1 ? '' : 's'}</span><span>${fmt(p.gross)}</span></div>
+      ${p.returns ? `<div class="pmeta"><span>includes returns of ${fmt(p.returns)}</span><span></span></div>` : ''}
+      <div><span>Their ${pct}%</span><span>${fmt(-p.commission)}</span></div>
+      <div class="grand"><span>They owe you</span><span>${fmt(p.netReceivable)}</span></div></div>`;
+    if (p.saved) {
+      const out = Math.round((p.saved.netReceivable - p.saved.received) * 100) / 100;
+      $('sePreview').innerHTML = head + `<div class="banner" style="margin-top:12px"><span><b>Already settled.</b> Rent ${fmt(p.saved.rent)} and commission ${fmt(p.saved.commission)} are in Expenses.<br>
+        Received ${fmt(p.saved.received)} · still due ${fmt(out)}</span></div>` +
+        (out > 0 ? `<button class="link" data-pay="${esc(p.saved.id)}" data-out="${out}">Record money received</button>` : '');
+      show('seBar', false);
+    } else {
+      $('sePreview').innerHTML = head + `
+        <div class="grid2" style="margin-top:12px">
+          <div class="field"><label for="seRent">Rent this month (₹)</label><input id="seRent" type="number" inputmode="decimal" min="0" value="${p.rent}"></div>
+          <div class="field"><label for="seRecv">Received so far (₹)</label><input id="seRecv" type="number" inputmode="decimal" min="0" value="0"></div>
+        </div>
+        <div class="field"><label>Rent paid by</label><div class="seg" id="seRentMode"></div></div>
+        <p class="note">Saving books the commission and the rent as expenses in that month, so profit reports include them. Nothing is changed in the shop’s sales.</p>`;
+      renderRentModes();
+      $('seSaveLabel').textContent = 'Save settlement';
+      show('seBar', true);
+    }
+  } catch(e){ $('sePreview').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+$('sePreview').onclick = async e => {
+  const b = e.target.closest('[data-pay]'); if (!b) return;
+  const v = prompt('Amount received from the partner shop (₹). Still due: ' + b.dataset.out);
+  if (v === null) return;
+  try { await call('recordPartnerPayment', S.token, { settlementId: b.dataset.pay, amount: Number(v) }); toast('Payment recorded'); loadSettlePreview(); loadSettleList(); }
+  catch(err){ toast(err.message, true); }
+};
+$('seSave').onclick = async () => {
+  const p = SE.preview; if (!p) return;
+  const rent = Number($('seRent').value) || 0;
+  if (!confirm(`Save ${MONTHS[$('seMonth').value - 1]} ${$('seYear').value} for ${p.name}?\n\nCommission ${fmt(p.commission)} and rent ${fmt(rent)} will be added to Expenses.`)) return;
+  show('busy', true);
+  try {
+    await call('saveSettlement', S.token, { locationId: p.locationId, ym: p.ym, rent, rentMode: SE.rentMode, received: Number($('seRecv').value) || 0 });
+    toast('Settlement saved');
+    await loadSettlePreview(); loadSettleList();
+  } catch(e){ toast(e.message, true); }
+  show('busy', false);
+};
+async function loadSettleList(){
+  try {
+    const d = await call('listSettlements', S.token);
+    $('seListHead').textContent = 'Settlements · still due from partners ' + fmt(d.totalOutstanding);
+    $('seList').innerHTML = d.items.map(x => `<div class="bill num" style="cursor:default"><span><b>${esc(x.name)}</b> · ${esc(x.ym)}<br>
+      <span class="pmeta">Sales ${fmt(x.gross)} · commission ${fmt(x.commission)} · rent ${fmt(x.rent)}</span></span>
+      <span style="text-align:right"><b class="${x.outstanding > 0 ? 'neg' : ''}">${x.outstanding > 0 ? 'Due ' + fmt(x.outstanding) : 'Paid'}</b>
+      ${x.outstanding > 0 ? `<br><button class="link" data-pay2="${esc(x.id)}" data-out="${x.outstanding}">Record payment</button>` : ''}</span></div>`).join('')
+      || '<div class="note">No settlements saved yet.</div>';
+  } catch(e){ $('seList').innerHTML = `<div class="note">${esc(e.message)}</div>`; }
+}
+$('seList').onclick = async e => {
+  const b = e.target.closest('[data-pay2]'); if (!b) return;
+  const v = prompt('Amount received (₹). Still due: ' + b.dataset.out); if (v === null) return;
+  try { await call('recordPartnerPayment', S.token, { settlementId: b.dataset.pay2, amount: Number(v) }); toast('Payment recorded'); loadSettleList(); loadSettlePreview(); }
+  catch(err){ toast(err.message, true); }
 };
 
 boot().catch(e => showFatal('Startup failed: ' + (e.message || e)));
